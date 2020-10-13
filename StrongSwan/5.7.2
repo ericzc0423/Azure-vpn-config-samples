@@ -1,0 +1,43 @@
+yum install strongswan
+
+[root@prod-gw02 ~]# cat /etc/strongswan/ipsec.conf
+# ipsec.conf - strongSwan IPsec configuration file
+
+# basic configuration
+
+config setup
+	# strictcrlpolicy=yes
+	# uniqueids = no
+
+# Add connections here.
+
+# Sample VPN connections
+conn to-transit
+	leftsubnet=10.1.0.0/16
+	#leftsubnet=10.1.1.0/24
+	authby=secret
+	rightsubnet=10.0.0.0/16
+	#rightsubnet=10.0.1.0/24
+	left=10.1.0.177
+	right=10.0.0.240
+	auto=start
+	keyexchange=ikev1
+  
+  [root@prod-gw02 ~]# cat /etc/strongswan/ipsec.secrets
+: PSK "123456"
+
+ip tunnel add ipsec0 local 10.1.0.1  remote 10.0.0.1  mode  vti key 12
+ip link set ipsec0 up
+ip addr add 10.1.0.1 dev ipsec0
+ip route add 10.0.1.1/32 dev ipsec0
+ip route add 10.0.1.0/24 dev ipsec0
+
+
+  yum install quagga -y
+  /usr/share/doc/quagga-0.99.22.4/bgpd.conf.sample /etc/quagga/
+  
+   systemctl enable zebra
+   systemctl start zebra
+   
+   systemctl start bgpd
+   systemctl enable bgpd
