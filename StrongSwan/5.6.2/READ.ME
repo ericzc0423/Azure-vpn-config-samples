@@ -1,0 +1,17 @@
+Policy Based VPN
+If no leftsubnet, rightsubnet then
+ip xfrm policy
+src 10.0.0.148/32 dst 10.1.0.195/32
+	dir out priority 367231
+	tmpl src 10.0.0.148 dst 10.1.0.195
+		proto esp spi 0xc0d28c9d reqid 1 mode tunnel
+src 10.1.0.195/32 dst 10.0.0.148/32
+	dir fwd priority 367231
+	tmpl src 10.1.0.195 dst 10.0.0.148
+		proto esp reqid 1 mode tunnel
+src 10.1.0.195/32 dst 10.0.0.148/32
+	dir in priority 367231
+	tmpl src 10.1.0.195 dst 10.0.0.148
+		proto esp reqid 1 mode tunnel
+    
+ it is only pass the /32 host by default
