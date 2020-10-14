@@ -1,0 +1,129 @@
+strorngswan 5.5.1
+debian 9_13
+
+  hostname stongswan-aws
+     
+   echo "stongswan-aws" >  /etc/hostname
+     sysctl -w net.ipv4.ip_forward=1
+echo "net.ipv4.ip_forward=1" > /etc/sysctl.conf
+     
+     apt install strongswan 
+    
+   
+  ## /var/lib/strongswan/ipsec.secrets.inc##
+  : PSK ""
+
+## /etc/ipsec.conf ##
+
+root@stongswan-aws:~# cat /etc/ipsec.conf
+config setup
+        charondebug="all"
+        uniqueids=yes
+
+include /var/lib/strongswan/ipsec.conf.inc
+include /etc/ipsec.d/gcp.conf
+
+## /etc/ipsec.d/gcp.conf ##
+conn %default
+    ikelifetime=600m
+    keylife=180m
+    rekeymargin=3m
+    keyingtries=3
+    keyexchange=ikev2
+    mobike=no
+    ike=aes256gcm16-sha512-modp4096
+    esp=aes256gcm16-sha512-modp8192
+    authby=psk
+
+conn net-net
+    left=10.164.0.196
+    leftid=18.192.187.107
+    leftsubnet=0.0.0.0/0
+    leftauth=psk
+    right=35.242.36.45
+    rightid=35.242.36.45
+    rightsubnet=0.0.0.0/0
+    rightauth=psk
+    type=tunnel
+    auto=start
+    dpdaction=restart
+    
+ systemctl start strongswan
+ ipsec status
+ipsec statusall
+
+ 
+##should have some route in table 220
+   ip route  list table 220
+   
+## /etc/strongswan.d/charon.conf ##
+nstall_routes = no
+
+ipsec restart
+ip route  list table 220
+ 
+## add VTI 
+
+ ip tunnel add  ipsec0 mode vti local 169.254.2.2 remote 169.254.2.1 key 2
+ ip link add ipsec0 type vti local 169.254.2.2 remote 169.254.2.1 key 2
+ ip addr add  169.254.2.2 remote 169.254.2.1 dev ipsec0
+ ip link set ipsec0 up mtu 1436
+ 
+     echo 2 >   /proc/sys/net/ipv4/conf/ipsec0/rp_filter
+   
+ ## sysctl /etc/sysctl.d/99-sysctl.conf
+net.ipv4.ip_forward = 1
+net.ipv4.conf.eth0.disable_xfrm = 1
+net.ipv4.conf.eth1.disable_xfrm = 1
+net.ipv4.conf.eth1.disable_policy = 1
+net.ipv4.conf.eth0.disable_policy = 1
+net.ipv4.conf.ipsec0.disable_policy = 1
+
+  apt install quagga
+  
+  cp /usr/share/doc/quagga-core/examples/zebra.conf.sample /etc/quagga/zebra.conf
+  cp /usr/share/doc/quagga-core/examples/bgpd.conf.sample /etc/quagga/bgpd.conf
+  cp /usr/share/doc/quagga-core/examples/vtysh.conf.sample /etc/quagga/vtysh.conf
+ systemctl start zebra
+ systemctl start bgpd  
+  systemctl enable zebra
+ systemctl enable bgpd 
+ ## /etc/quagga/bgpd.conf
+ !
+! Zebra configuration saved from vty
+!   2020/10/14 13:51:00
+!
+hostname bgpd
+password zebra
+log stdout
+!
+router bgp 65002
+ bgp router-id 10.164.1.225
+ network 10.164.0.0/24
+ network 10.164.1.0/24
+ neighbor 169.254.2.1 remote-as 65000
+ neighbor 169.254.2.1 update-source 169.254.2.2
+!
+ address-family ipv6
+ exit-address-family
+ exit
+!
+line vty
+!
+
+ ip route get 192.168.0.2/32
+
+   
+  ip xfrm stat
+   ip xfrm monitor
+   ip xfrm
+   ip xfrm policy
+ 
+   
+Refer: 
+
+https://cloud.google.com/community/tutorials/using-cloud-vpn-with-strongswan
+
+https://wiki.strongswan.org/projects/strongswan/wiki/RouteBasedVPN
+https://gist.github.com/heri16/2f59d22d1d5980796bfb
+https://geekdudes.wordpress.com/2019/02/01/creating-site-to-site-vpn-between-strongswan-and-amazon-aws-virtual-private-gateway-using-bgp-routing-protocol/
